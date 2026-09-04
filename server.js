@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const path = require("path");
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -18,6 +19,7 @@ if (!MONGODB_URI) {
 
 app.use(cors());
 app.use(express.json());
+app.use("/images", express.static(path.join(__dirname, "public", "images")));
 
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });

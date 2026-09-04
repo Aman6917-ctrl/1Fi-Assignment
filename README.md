@@ -21,12 +21,15 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` and set `MONGODB_URI` to your database (local MongoDB or Atlas). Keep `PORT=5000` unless you need another port.
+Edit `.env` and set `MONGODB_URI` to your database (local MongoDB or Atlas). Keep `PORT=5001` unless you need another port. Set `IMAGE_BASE_URL` to this API’s public origin so seed writes absolute image URLs (local or production).
 
 ```env
 MONGODB_URI=mongodb://127.0.0.1:27017/emi_products
-PORT=5000
+PORT=5001
+IMAGE_BASE_URL=http://localhost:5001
 ```
+
+Studio JPGs in `public/images/` are served at `GET /images/<filename>`. `npm run seed` stores `${IMAGE_BASE_URL}/images/<filename>` on each variant.
 
 Load sample products and EMI plans (clears existing `Product` and `EMIPlan` documents first):
 
@@ -55,9 +58,8 @@ The server logs `Server running on port 5000` (or your `PORT`) when it is ready.
 | `slug` | String | Required, unique (e.g. `iphone-17-pro`) |
 | `name` | String | Required |
 | `brand` | String | Required |
-| `isFeaturedDeal` | Boolean | Default `false`. When `true`, the product appears in the Great Deals carousel |
-| `dealTag` | String | Optional label (e.g. `Best Seller`, `Limited Time`, `Trending`) |
-| `dealPriority` | Number | Default `0`. Higher values appear first in `/api/products/deals` |
+| `placement` | String | `deals` \| `hero` \| `catalogue` — homepage section |
+| `dealTag` | String | Label for the Great Deals strip (e.g. `Best Seller`) |
 | `variants` | Array | At least one variant |
 | `variants[].variantId` | String | Required (e.g. `256gb-orange`) |
 | `variants[].label` | String | Required (e.g. `256GB, Orange`) |
@@ -86,7 +88,6 @@ A unique compound index enforces one plan per `(productSlug, variantId, tenureMo
 - 3–24 months: **0%** interest; monthly amount = selling price ÷ tenure (rounded)
 - 36 months: **10.5%** reducing-balance EMI
 - Cashback: ₹1,000–₹7,500 by product tier and tenure
-- Great Deals: iPhone 17 Pro (`Best Seller`, priority 20) and Galaxy S24 Ultra (`Limited Time`, priority 10) are featured; OnePlus 12 is not
 
 ## API endpoints
 
@@ -110,21 +111,22 @@ GET /api/products
     "slug": "iphone-17-pro",
     "name": "iPhone 17 Pro",
     "brand": "Apple",
-    "thumbnail": "https://picsum.photos/seed/iphone-17-pro-silver-1/800/800",
-    "startingPrice": 127400
+    "thumbnail": "http://localhost:5001/images/iphone-17-pro-silver.jpg",
+    "startingPrice": 127400,
+    "placement": "deals"
   },
   {
     "slug": "samsung-galaxy-s24-ultra",
     "name": "Samsung Galaxy S24 Ultra",
     "brand": "Samsung",
-    "thumbnail": "https://picsum.photos/seed/s24-ultra-black-1/800/800",
+    "thumbnail": "http://localhost:5001/images/samsung-galaxy-s24-ultra-black.jpg",
     "startingPrice": 121999
   },
   {
     "slug": "oneplus-12",
     "name": "OnePlus 12",
     "brand": "OnePlus",
-    "thumbnail": "https://picsum.photos/seed/oneplus-12-emerald-1/800/800",
+    "thumbnail": "http://localhost:5001/images/oneplus-12-emerald.jpg",
     "startingPrice": 54999
   }
 ]
@@ -135,13 +137,7 @@ GET /api/products
 
 ### `GET /api/products/deals`
 
-Returns featured products for the Great Deals carousel (`isFeaturedDeal: true`), sorted by `dealPriority` descending. `startingPrice`, `mrp`, `thumbnail`, and `discountPercent` all use the lowest-priced variant.
-
-**Request**
-
-```http
-GET /api/products/deals
-```
+Homepage Great Deals strip: products with `placement: "deals"`, plus `mrp`, `discountPercent`, and `dealTag`. Hero and catalogue phones come from `GET /api/products` filtered by `placement`.
 
 **Response** `200`
 
@@ -151,27 +147,16 @@ GET /api/products/deals
     "slug": "iphone-17-pro",
     "name": "iPhone 17 Pro",
     "brand": "Apple",
-    "thumbnail": "https://picsum.photos/seed/iphone-17-pro-silver-1/800/800",
+    "thumbnail": "http://localhost:5001/images/iphone-17-pro-silver.jpg",
     "startingPrice": 127400,
     "mrp": 134900,
     "discountPercent": 6,
     "dealTag": "Best Seller"
-  },
-  {
-    "slug": "samsung-galaxy-s24-ultra",
-    "name": "Samsung Galaxy S24 Ultra",
-    "brand": "Samsung",
-    "thumbnail": "https://picsum.photos/seed/s24-ultra-black-1/800/800",
-    "startingPrice": 121999,
-    "mrp": 134999,
-    "discountPercent": 10,
-    "dealTag": "Limited Time"
   }
 ]
 ```
 
-- `discountPercent` is `round(((mrp - price) / mrp) * 100)`.
-- This path is registered **before** `GET /api/products/:slug` so `"deals"` is not treated as a product slug.
+Must be registered **before** `GET /api/products/:slug` so `deals` is not treated as a slug.
 
 ### `GET /api/products/:slug`
 
@@ -197,8 +182,7 @@ GET /api/products/iphone-17-pro
       "mrp": 134900,
       "price": 127400,
       "images": [
-        "https://picsum.photos/seed/iphone-17-pro-silver-1/800/800",
-        "https://picsum.photos/seed/iphone-17-pro-silver-2/800/800"
+        "http://localhost:5001/images/iphone-17-pro-silver.jpg"
       ],
       "emiPlans": [
         {
@@ -239,8 +223,7 @@ GET /api/products/iphone-17-pro
       "mrp": 134900,
       "price": 127400,
       "images": [
-        "https://picsum.photos/seed/iphone-17-pro-orange-1/800/800",
-        "https://picsum.photos/seed/iphone-17-pro-orange-2/800/800"
+        "http://localhost:5001/images/iphone-17-pro-orange.jpg"
       ],
       "emiPlans": [
         {

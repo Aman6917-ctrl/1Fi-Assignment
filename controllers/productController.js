@@ -1,18 +1,6 @@
 const Product = require("../models/Product");
 const EMIPlan = require("../models/EMIPlan");
 
-/** Variant used for starting price (lowest selling price). */
-function getStartingVariant(product) {
-  return product.variants.reduce((lowest, variant) =>
-    variant.price < lowest.price ? variant : lowest
-  );
-}
-
-function discountPercent(mrp, price) {
-  if (!mrp) return 0;
-  return Math.round(((mrp - price) / mrp) * 100);
-}
-
 /**
  * GET /api/products
  * Lightweight listing used by the product grid: slug, name, brand,
@@ -34,6 +22,7 @@ async function getAllProducts(req, res) {
         brand: product.brand,
         thumbnail: firstVariant?.images?.[0] || null,
         startingPrice,
+        placement: product.placement || "catalogue",
       };
     });
 
@@ -49,32 +38,36 @@ async function getAllProducts(req, res) {
 
 /**
  * GET /api/products/deals
- * Featured "Great Deals" carousel items, highest dealPriority first.
+ * Catalog items with MRP, discount %, and a deal tag for the homepage strip.
  */
-async function getFeaturedDeals(req, res) {
+async function getDeals(_req, res) {
   try {
-    const products = await Product.find({ isFeaturedDeal: true })
-      .sort({ dealPriority: -1 })
-      .lean();
+    const products = await Product.find({ placement: "deals" }).lean();
 
     const payload = products.map((product) => {
-      const variant = getStartingVariant(product);
+      const firstVariant = product.variants[0];
+      const startingPrice = Math.min(
+        ...product.variants.map((variant) => variant.price)
+      );
+      const mrp = firstVariant?.mrp ?? startingPrice;
+      const discountPercent =
+        mrp > startingPrice ? Math.round(((mrp - startingPrice) / mrp) * 100) : 0;
 
       return {
         slug: product.slug,
         name: product.name,
         brand: product.brand,
-        thumbnail: variant?.images?.[0] || null,
-        startingPrice: variant.price,
-        mrp: variant.mrp,
-        discountPercent: discountPercent(variant.mrp, variant.price),
-        dealTag: product.dealTag || null,
+        thumbnail: firstVariant?.images?.[0] || null,
+        startingPrice,
+        mrp,
+        discountPercent,
+        dealTag: product.dealTag || "Deal",
       };
     });
 
     return res.status(200).json(payload);
   } catch (error) {
-    console.error("Failed to fetch featured deals:", error);
+    console.error("Failed to fetch deals:", error);
     return res.status(500).json({
       error: "Internal server error",
       message: "Could not fetch deals. Please try again later.",
@@ -141,6 +134,6 @@ async function getProductBySlug(req, res) {
 
 module.exports = {
   getAllProducts,
-  getFeaturedDeals,
+  getDeals,
   getProductBySlug,
 };
