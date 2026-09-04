@@ -21,6 +21,22 @@ app.use(cors());
 app.use(express.json());
 app.use("/images", express.static(path.join(__dirname, "public", "images")));
 
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    name: "Corpus EMI API",
+    status: "ok",
+    message:
+      "This is the backend API, not the shopping website. Use the frontend for the UI.",
+    endpoints: {
+      health: "/health",
+      products: "/api/products",
+      deals: "/api/products/deals",
+      product: "/api/products/:slug",
+      imageExample: "/images/iphone-17-pro-silver.jpg",
+    },
+  });
+});
+
 app.get("/health", (_req, res) => {
   res.status(200).json({ status: "ok" });
 });
