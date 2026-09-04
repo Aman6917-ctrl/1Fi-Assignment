@@ -64,8 +64,8 @@ const productSchema = new mongoose.Schema(
       type: [variantSchema],
       required: true,
       validate: {
-        validator: (value) => Array.isArray(value) && value.length > 0,
-        message: "A product must have at least one variant",
+        validator: (value) => Array.isArray(value) && value.length >= 2,
+        message: "A product must have at least two variants",
       },
     },
   },

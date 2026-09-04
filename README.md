@@ -60,7 +60,7 @@ The server logs `Server running on port 5000` (or your `PORT`) when it is ready.
 | `brand` | String | Required |
 | `placement` | String | `deals` \| `hero` \| `catalogue` — homepage section |
 | `dealTag` | String | Label for the Great Deals strip (e.g. `Best Seller`) |
-| `variants` | Array | At least one variant |
+| `variants` | Array | At least **two** variants |
 | `variants[].variantId` | String | Required (e.g. `256gb-orange`) |
 | `variants[].label` | String | Required (e.g. `256GB, Orange`) |
 | `variants[].mrp` | Number | Required, ≥ 0 |
@@ -91,7 +91,10 @@ A unique compound index enforces one plan per `(productSlug, variantId, tenureMo
 
 ## API endpoints
 
-Base URL (local): `http://localhost:5000`
+Base URL (local): `http://localhost:5001`  
+Production: `https://onefi-assignment-nzq0.onrender.com`
+
+Also: `GET /health` → `{ "status": "ok" }`. Static photos: `GET /images/<filename>.jpg`.
 
 ### `GET /api/products`
 
@@ -113,6 +116,7 @@ GET /api/products
     "brand": "Apple",
     "thumbnail": "http://localhost:5001/images/iphone-17-pro-silver.jpg",
     "startingPrice": 127400,
+    "startingEmi": 5308,
     "placement": "deals"
   },
   {
@@ -286,19 +290,28 @@ GET /api/products/iphone-17-pro
 | --- | --- |
 | `npm start` | `node server.js` |
 | `npm run dev` | `nodemon server.js` |
-| `npm run seed` | `node seed.js` |
+| `npm run seed` | `node seed.js` (destructive: clears then inserts sample products/EMI) |
+| `npm run migrate:images` | Rewrite `localhost` image hosts to `IMAGE_BASE_URL` without deleting data |
 
-## Deploy (Render / Railway)
+## Image URL migration
+
+Production documents may still store `http://localhost:5001/images/...`. This does **not** wipe the database.
+
+```bash
+# .env must have MONGODB_URI
+IMAGE_BASE_URL=https://onefi-assignment-nzq0.onrender.com npm run migrate:images
+```
+
+Do **not** put `npm run seed` on Render Pre-Deploy. Seed only when you intentionally want a reset.
+
+## Deploy (Render)
+
+Live API: `https://onefi-assignment-nzq0.onrender.com`
 
 1. Push this repo to GitHub.
-2. Create a **Web Service** (Render) or **New** → GitHub repo (Railway).
-3. Set the start command to `npm start` (both platforms detect Node from `package.json`).
-4. Add environment variables:
-   - `MONGODB_URI` — MongoDB Atlas connection string (allow the platform’s IPs / `0.0.0.0/0` in Atlas Network Access)
-   - `PORT` — optional; Render and Railway inject `PORT` automatically
-5. After the first deploy, run the seed once from a one-off job / shell:
-   - Render: **Shell** → `npm run seed`
-   - Railway: **+ New** → empty service / one-off, or the service terminal → `npm run seed`
-6. Point the frontend `API` base URL at the deployed host (CORS is enabled).
+2. Render Web Service, start command `npm start`.
+3. Env: `MONGODB_URI`, `IMAGE_BASE_URL=https://onefi-assignment-nzq0.onrender.com` (`PORT` is injected).
+4. First-time data only: Render **Shell** → `npm run seed` (once). Later image-host fixes: `npm run migrate:images`.
+5. Frontend `VITE_API_BASE_URL` should point at this host.
 
-Do not commit `.env`. Use `.env.example` as the template for required keys.
+Do not commit `.env`. Use `.env.example` as the template.

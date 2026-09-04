@@ -1,5 +1,6 @@
 const Product = require("../models/Product");
 const EMIPlan = require("../models/EMIPlan");
+const { publicOrigin, rewriteAssetUrl, rewriteImageList } = require("../utils/imageUrls");
 
 /**
  * GET /api/products
@@ -8,6 +9,7 @@ const EMIPlan = require("../models/EMIPlan");
  */
 async function getAllProducts(req, res) {
   try {
+    const origin = publicOrigin(req);
     const products = await Product.find().lean();
 
     const payload = products.map((product) => {
@@ -20,8 +22,9 @@ async function getAllProducts(req, res) {
         slug: product.slug,
         name: product.name,
         brand: product.brand,
-        thumbnail: firstVariant?.images?.[0] || null,
+        thumbnail: rewriteAssetUrl(firstVariant?.images?.[0] || null, origin),
         startingPrice,
+        startingEmi: Math.round(startingPrice / 24),
         placement: product.placement || "catalogue",
       };
     });
@@ -42,6 +45,7 @@ async function getAllProducts(req, res) {
  */
 async function getDeals(_req, res) {
   try {
+    const origin = publicOrigin(_req);
     const products = await Product.find({ placement: "deals" }).lean();
 
     const payload = products.map((product) => {
@@ -57,7 +61,7 @@ async function getDeals(_req, res) {
         slug: product.slug,
         name: product.name,
         brand: product.brand,
-        thumbnail: firstVariant?.images?.[0] || null,
+        thumbnail: rewriteAssetUrl(firstVariant?.images?.[0] || null, origin),
         startingPrice,
         mrp,
         discountPercent,
@@ -81,6 +85,7 @@ async function getDeals(_req, res) {
  */
 async function getProductBySlug(req, res) {
   try {
+    const origin = publicOrigin(req);
     const { slug } = req.params;
 
     const product = await Product.findOne({ slug }).lean();
@@ -113,7 +118,7 @@ async function getProductBySlug(req, res) {
       label: variant.label,
       mrp: variant.mrp,
       price: variant.price,
-      images: variant.images,
+      images: rewriteImageList(variant.images, origin),
       emiPlans: plansByVariant[variant.variantId] || [],
     }));
 
