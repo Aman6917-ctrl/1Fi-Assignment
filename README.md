@@ -55,6 +55,9 @@ The server logs `Server running on port 5000` (or your `PORT`) when it is ready.
 | `slug` | String | Required, unique (e.g. `iphone-17-pro`) |
 | `name` | String | Required |
 | `brand` | String | Required |
+| `isFeaturedDeal` | Boolean | Default `false`. When `true`, the product appears in the Great Deals carousel |
+| `dealTag` | String | Optional label (e.g. `Best Seller`, `Limited Time`, `Trending`) |
+| `dealPriority` | Number | Default `0`. Higher values appear first in `/api/products/deals` |
 | `variants` | Array | At least one variant |
 | `variants[].variantId` | String | Required (e.g. `256gb-orange`) |
 | `variants[].label` | String | Required (e.g. `256GB, Orange`) |
@@ -83,6 +86,7 @@ A unique compound index enforces one plan per `(productSlug, variantId, tenureMo
 - 3–24 months: **0%** interest; monthly amount = selling price ÷ tenure (rounded)
 - 36 months: **10.5%** reducing-balance EMI
 - Cashback: ₹1,000–₹7,500 by product tier and tenure
+- Great Deals: iPhone 17 Pro (`Best Seller`, priority 20) and Galaxy S24 Ultra (`Limited Time`, priority 10) are featured; OnePlus 12 is not
 
 ## API endpoints
 
@@ -128,6 +132,46 @@ GET /api/products
 
 - `thumbnail` is the first image of the first variant.
 - `startingPrice` is the lowest variant `price`.
+
+### `GET /api/products/deals`
+
+Returns featured products for the Great Deals carousel (`isFeaturedDeal: true`), sorted by `dealPriority` descending. `startingPrice`, `mrp`, `thumbnail`, and `discountPercent` all use the lowest-priced variant.
+
+**Request**
+
+```http
+GET /api/products/deals
+```
+
+**Response** `200`
+
+```json
+[
+  {
+    "slug": "iphone-17-pro",
+    "name": "iPhone 17 Pro",
+    "brand": "Apple",
+    "thumbnail": "https://picsum.photos/seed/iphone-17-pro-silver-1/800/800",
+    "startingPrice": 127400,
+    "mrp": 134900,
+    "discountPercent": 6,
+    "dealTag": "Best Seller"
+  },
+  {
+    "slug": "samsung-galaxy-s24-ultra",
+    "name": "Samsung Galaxy S24 Ultra",
+    "brand": "Samsung",
+    "thumbnail": "https://picsum.photos/seed/s24-ultra-black-1/800/800",
+    "startingPrice": 121999,
+    "mrp": 134999,
+    "discountPercent": 10,
+    "dealTag": "Limited Time"
+  }
+]
+```
+
+- `discountPercent` is `round(((mrp - price) / mrp) * 100)`.
+- This path is registered **before** `GET /api/products/:slug` so `"deals"` is not treated as a product slug.
 
 ### `GET /api/products/:slug`
 

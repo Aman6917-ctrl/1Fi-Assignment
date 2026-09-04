@@ -55,6 +55,9 @@ const products = [
     name: "iPhone 17 Pro",
     brand: "Apple",
     tier: "premium",
+    isFeaturedDeal: true,
+    dealTag: "Best Seller",
+    dealPriority: 20,
     variants: [
       {
         variantId: "256gb-silver",
@@ -83,6 +86,9 @@ const products = [
     name: "Samsung Galaxy S24 Ultra",
     brand: "Samsung",
     tier: "flagship",
+    isFeaturedDeal: true,
+    dealTag: "Limited Time",
+    dealPriority: 10,
     variants: [
       {
         variantId: "256gb-titanium-black",

@@ -49,6 +49,18 @@ const productSchema = new mongoose.Schema(
       required: [true, "brand is required"],
       trim: true,
     },
+    isFeaturedDeal: {
+      type: Boolean,
+      default: false,
+    },
+    dealTag: {
+      type: String,
+      trim: true,
+    },
+    dealPriority: {
+      type: Number,
+      default: 0,
+    },
     variants: {
       type: [variantSchema],
       required: true,

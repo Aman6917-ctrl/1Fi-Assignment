@@ -1,6 +1,18 @@
 const Product = require("../models/Product");
 const EMIPlan = require("../models/EMIPlan");
 
+/** Variant used for starting price (lowest selling price). */
+function getStartingVariant(product) {
+  return product.variants.reduce((lowest, variant) =>
+    variant.price < lowest.price ? variant : lowest
+  );
+}
+
+function discountPercent(mrp, price) {
+  if (!mrp) return 0;
+  return Math.round(((mrp - price) / mrp) * 100);
+}
+
 /**
  * GET /api/products
  * Lightweight listing used by the product grid: slug, name, brand,
@@ -31,6 +43,41 @@ async function getAllProducts(req, res) {
     return res.status(500).json({
       error: "Internal server error",
       message: "Could not fetch products. Please try again later.",
+    });
+  }
+}
+
+/**
+ * GET /api/products/deals
+ * Featured "Great Deals" carousel items, highest dealPriority first.
+ */
+async function getFeaturedDeals(req, res) {
+  try {
+    const products = await Product.find({ isFeaturedDeal: true })
+      .sort({ dealPriority: -1 })
+      .lean();
+
+    const payload = products.map((product) => {
+      const variant = getStartingVariant(product);
+
+      return {
+        slug: product.slug,
+        name: product.name,
+        brand: product.brand,
+        thumbnail: variant?.images?.[0] || null,
+        startingPrice: variant.price,
+        mrp: variant.mrp,
+        discountPercent: discountPercent(variant.mrp, variant.price),
+        dealTag: product.dealTag || null,
+      };
+    });
+
+    return res.status(200).json(payload);
+  } catch (error) {
+    console.error("Failed to fetch featured deals:", error);
+    return res.status(500).json({
+      error: "Internal server error",
+      message: "Could not fetch deals. Please try again later.",
     });
   }
 }
@@ -94,5 +141,6 @@ async function getProductBySlug(req, res) {
 
 module.exports = {
   getAllProducts,
+  getFeaturedDeals,
   getProductBySlug,
 };
